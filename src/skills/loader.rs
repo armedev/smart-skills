@@ -184,3 +184,34 @@ impl SkillLoader {
         default_sources
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_installed_skills_empty() {
+        let installed = SkillLoader::load_installed_skills();
+        // Should be empty when no .agents directory exists
+        assert!(installed.is_empty());
+    }
+
+    #[test]
+    fn test_validate_skills_empty() {
+        let result = SkillLoader::validate_skills();
+        assert!(!result.valid);
+        assert!(!result.errors.is_empty());
+    }
+
+    #[test]
+    fn test_validation_result_empty_warnings() {
+        let result = ValidationResult {
+            valid: true,
+            errors: vec![],
+            warnings: vec![],
+        };
+        assert!(result.valid);
+        assert!(result.errors.is_empty());
+        assert!(result.warnings.is_empty());
+    }
+}

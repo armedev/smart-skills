@@ -46,3 +46,35 @@ pub mod loader;
 
 #[allow(unused_imports)]
 pub use loader::{SkillLoader, ValidationError, ValidationResult};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_description_simple() {
+        let content = "## Planning\n\n* Test first\n* Document everything";
+        let desc = Skill::extract_description(content);
+        assert_eq!(desc, "Test first");
+    }
+
+    #[test]
+    fn test_extract_description_with_header() {
+        let content = "# Title\n\n* First bullet\n* Second bullet";
+        let desc = Skill::extract_description(content);
+        assert_eq!(desc, "First bullet");
+    }
+
+    #[test]
+    fn test_extract_description_empty() {
+        let content = "";
+        let desc = Skill::extract_description(content);
+        assert_eq!(desc, "");
+    }
+
+    #[test]
+    fn test_skill_source_enum_equality() {
+        assert_eq!(SkillSource::Bundled, SkillSource::Bundled);
+        assert_ne!(SkillSource::Bundled, SkillSource::Global);
+    }
+}

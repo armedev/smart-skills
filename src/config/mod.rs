@@ -85,3 +85,61 @@ pub fn agents_skills_dir() -> PathBuf {
 pub fn cursor_rules_dir() -> PathBuf {
     PathBuf::from(".cursor").join("rules")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_config_default() {
+        let config = Config::default();
+        assert!(config.skill_sources.is_empty());
+        assert!(config.install_targets.agents);
+        assert!(config.install_targets.cursor);
+    }
+
+    #[test]
+    fn test_config_save_and_load() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.json");
+
+        let config = Config {
+            skill_sources: vec![SkillSource {
+                path: "test".to_string(),
+                priority: 10,
+            }],
+            install_targets: InstallTargets {
+                agents: true,
+                cursor: false,
+            },
+        };
+
+        config.save(&config_path).unwrap();
+        let loaded = Config::load(&config_path);
+
+        assert_eq!(loaded.skill_sources.len(), 1);
+        assert_eq!(loaded.skill_sources[0].path, "test");
+        assert_eq!(loaded.skill_sources[0].priority, 10);
+        assert!(!loaded.install_targets.cursor);
+    }
+
+    #[test]
+    fn test_config_load_nonexistent() {
+        let config_path = PathBuf::from("/nonexistent/path/config.json");
+        let config = Config::load(&config_path);
+        // Should return default config
+        assert!(config.skill_sources.is_empty());
+    }
+
+    #[test]
+    fn test_path_helpers() {
+        // Just make sure these don't panic
+        let _ = global_config_path();
+        let _ = global_config_dir();
+        let _ = global_skills_dir();
+        let _ = project_config_path();
+        let _ = agents_skills_dir();
+        let _ = cursor_rules_dir();
+    }
+}
