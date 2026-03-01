@@ -18,6 +18,7 @@ pub struct SkillSource {
 pub struct InstallTargets {
     pub agents: bool,
     pub cursor: bool,
+    pub claude: bool,
 }
 
 impl Default for InstallTargets {
@@ -25,6 +26,7 @@ impl Default for InstallTargets {
         Self {
             agents: true,
             cursor: true,
+            claude: true,
         }
     }
 }
@@ -87,6 +89,10 @@ pub fn cursor_rules_dir() -> PathBuf {
     PathBuf::from(".cursor").join("rules")
 }
 
+pub fn claude_rules_dir() -> PathBuf {
+    PathBuf::from(".claude").join("rules")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -98,6 +104,7 @@ mod tests {
         assert!(config.skill_sources.is_empty());
         assert!(config.install_targets.agents);
         assert!(config.install_targets.cursor);
+        assert!(config.install_targets.claude);
     }
 
     #[test]
@@ -113,6 +120,7 @@ mod tests {
             install_targets: InstallTargets {
                 agents: true,
                 cursor: false,
+                claude: true,
             },
         };
 
@@ -142,5 +150,6 @@ mod tests {
         let _ = project_config_path();
         let _ = agents_skills_dir();
         let _ = cursor_rules_dir();
+        let _ = claude_rules_dir();
     }
 }

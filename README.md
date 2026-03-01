@@ -1,6 +1,6 @@
 # Smart Skills
 
-Agent skill management tool - manage and sync AI agent instructions for opencode, nvim, and Cursor.
+Agent skill management tool - manage and sync AI agent instructions for opencode, nvim, Cursor, and Claude Code.
 
 ## Features
 
@@ -8,7 +8,7 @@ Agent skill management tool - manage and sync AI agent instructions for opencode
 - **Per-Project Skills**: Add custom skills in configured directories
 - **Global Skills**: Support for `~/.config/smart-skills/skills/`
 - **Skill Validation**: Validate skill structure and content
-- **Multi-Platform**: Installs skills for opencode, nvim, and Cursor
+- **Multi-Platform**: Installs skills for opencode, nvim, Cursor, and Claude Code
 
 ## Installation
 
@@ -54,6 +54,7 @@ This creates:
 - `.smart-skills/config.json` - Project config with skill sources
 - `.agents/skills/` - Skills for opencode/nvim
 - `.cursor/rules/` - Skills for Cursor
+- `.claude/rules/` - Skills for Claude Code
 
 ### Global Skills
 
@@ -120,7 +121,8 @@ smart-skills clear
   ],
   "install_targets": {
     "agents": true,
-    "cursor": true
+    "cursor": true,
+    "claude": true
   }
 }
 ```

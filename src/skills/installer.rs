@@ -16,6 +16,9 @@ impl SkillInstaller {
         if cfg.install_targets.cursor {
             Self::install_to_cursor(skill)?;
         }
+        if cfg.install_targets.claude {
+            Self::install_to_claude(skill)?;
+        }
         Ok(())
     }
 
@@ -57,6 +60,26 @@ impl SkillInstaller {
         Ok(())
     }
 
+    fn install_to_claude(skill: &Skill) -> Result<(), String> {
+        let target_dir = config::claude_rules_dir();
+        fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
+
+        let target_path = target_dir.join(format!("{}.md", skill.name));
+
+        let content = if Self::has_frontmatter(&skill.content) {
+            skill.content.clone()
+        } else {
+            format!(
+                "---\ndescription: {}\n---\n\n{}",
+                skill.description, skill.content
+            )
+        };
+
+        fs::write(&target_path, content).map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
     fn has_frontmatter(content: &str) -> bool {
         content.starts_with("---")
     }
@@ -69,6 +92,9 @@ impl SkillInstaller {
         }
         if cfg.install_targets.cursor {
             Self::remove_from_cursor(skill_name)?;
+        }
+        if cfg.install_targets.claude {
+            Self::remove_from_claude(skill_name)?;
         }
         Ok(())
     }
@@ -83,6 +109,14 @@ impl SkillInstaller {
 
     fn remove_from_cursor(skill_name: &str) -> Result<(), String> {
         let target_path = config::cursor_rules_dir().join(format!("{}.md", skill_name));
+        if target_path.exists() {
+            fs::remove_file(&target_path).map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
+    fn remove_from_claude(skill_name: &str) -> Result<(), String> {
+        let target_path = config::claude_rules_dir().join(format!("{}.md", skill_name));
         if target_path.exists() {
             fs::remove_file(&target_path).map_err(|e| e.to_string())?;
         }
@@ -149,6 +183,13 @@ mod tests {
     fn test_remove_from_cursor_nonexistent() {
         // Should not fail when removing from non-existent directory
         let result = SkillInstaller::remove_from_cursor("test-skill");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_remove_from_claude_nonexistent() {
+        // Should not fail when removing from non-existent directory
+        let result = SkillInstaller::remove_from_claude("test-skill");
         assert!(result.is_ok());
     }
 }

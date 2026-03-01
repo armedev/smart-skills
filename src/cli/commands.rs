@@ -46,6 +46,7 @@ pub fn init(source: String) -> Result<(), String> {
     fs::create_dir_all(config::project_config_dir()).map_err(|e| e.to_string())?;
     fs::create_dir_all(config::agents_skills_dir()).map_err(|e| e.to_string())?;
     fs::create_dir_all(config::cursor_rules_dir()).map_err(|e| e.to_string())?;
+    fs::create_dir_all(config::claude_rules_dir()).map_err(|e| e.to_string())?;
 
     let config = Config {
         skill_sources: vec![SkillSource {
@@ -286,6 +287,7 @@ pub fn config_cmd() -> Result<(), String> {
         println!("  Install targets:");
         println!("    - agents: {}", cfg.install_targets.agents);
         println!("    - cursor: {}", cfg.install_targets.cursor);
+        println!("    - claude: {}", cfg.install_targets.claude);
     } else if global_config.exists() {
         println!("Global config: {}", global_config.display());
         let cfg = Config::load(&global_config);
