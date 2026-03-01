@@ -35,7 +35,17 @@ impl SkillInstaller {
         fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
 
         let target_path = target_dir.join("SKILL.md");
-        fs::write(&target_path, &skill.content).map_err(|e| e.to_string())?;
+
+        let content = if Self::has_frontmatter(&skill.content) {
+            skill.content.clone()
+        } else {
+            format!(
+                "---\nname: {}\ndescription: {}\n---\n\n{}",
+                skill.name, skill.description, skill.content
+            )
+        };
+
+        fs::write(&target_path, content).map_err(|e| e.to_string())?;
 
         Ok(())
     }
@@ -50,8 +60,8 @@ impl SkillInstaller {
             skill.content.clone()
         } else {
             format!(
-                "---\ndescription: {}\n---\n\n{}",
-                skill.description, skill.content
+                "---\nname: {}\ndescription: {}\n---\n\n{}",
+                skill.name, skill.description, skill.content
             )
         };
 
@@ -70,8 +80,8 @@ impl SkillInstaller {
             skill.content.clone()
         } else {
             format!(
-                "---\ndescription: {}\n---\n\n{}",
-                skill.description, skill.content
+                "---\nname: {}\ndescription: {}\n---\n\n{}",
+                skill.name, skill.description, skill.content
             )
         };
 
