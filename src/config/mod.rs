@@ -53,8 +53,9 @@ pub fn global_config_path() -> PathBuf {
 }
 
 pub fn global_config_dir() -> PathBuf {
-    dirs::config_dir()
+    dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
+        .join(".config")
         .join("smart-skills")
 }
 

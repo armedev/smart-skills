@@ -1,20 +1,11 @@
 use crate::config::{self, Config, InstallTargets, SkillSource};
 use crate::skills::installer::SkillInstaller;
 use crate::skills::loader::SkillLoader;
-use dirs;
 use std::fs;
 
 pub fn init(source: String) -> Result<(), String> {
-    let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-    let xdg_config_dir = home_dir.join(".config").join("smart-skills");
-    let macos_config_dir = config::global_config_dir();
-
-    let global_exists = macos_config_dir.exists() || xdg_config_dir.exists();
-    let global_skills_path = if xdg_config_dir.exists() {
-        xdg_config_dir.join("skills")
-    } else {
-        config::global_skills_dir()
-    };
+    let global_skills_path = config::global_skills_dir();
+    let global_exists = global_skills_path.exists();
 
     if source.is_empty() && !global_exists {
         println!("No global skill source found. Please specify a skill source:");
@@ -47,11 +38,7 @@ pub fn init(source: String) -> Result<(), String> {
     let source_label = if !source.is_empty() {
         format!("user-specified: {}", source)
     } else if global_exists {
-        if xdg_config_dir.exists() {
-            "global: ~/.config/smart-skills/skills/".to_string()
-        } else {
-            "global: ~/Library/Application Support/smart-skills/skills/".to_string()
-        }
+        "global: ~/.config/smart-skills/skills/".to_string()
     } else {
         "default: skills/".to_string()
     };

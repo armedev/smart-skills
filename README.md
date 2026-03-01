@@ -58,8 +58,7 @@ This creates:
 ### Global Skills
 
 By default, init uses skills from:
-- `~/.config/smart-skills/skills/` (Linux/macOS XDG)
-- `~/Library/Application Support/smart-skills/skills/` (macOS legacy)
+- `~/.config/smart-skills/skills/` (all platforms)
 
 ### Add skills
 
