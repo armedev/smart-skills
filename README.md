@@ -21,14 +21,14 @@ cargo install smart-skills
 ### Via Homebrew
 
 ```bash
-brew tap armedev/smart-skills
+brew tap armedev/tap
 brew install smart-skills
 ```
 
 ### Via Install Script
 
 ```bash
-curl -sL https://raw.githubusercontent.com/armedev/smart-skills/main/distribution/scripts/install.sh | bash
+curl -sL https://raw.githubusercontent.com/armedev/smart-skills/main/install.sh | bash
 ```
 
 ### From Source
