@@ -83,3 +83,52 @@ impl SkillInstaller {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_has_frontmatter_true() {
+        let content = "---\ndescription: test\n---\n\n## Content";
+        assert!(SkillInstaller::has_frontmatter(content));
+    }
+
+    #[test]
+    fn test_has_frontmatter_false() {
+        let content = "## Content\n\n* Bullet point";
+        assert!(!SkillInstaller::has_frontmatter(content));
+    }
+
+    #[test]
+    fn test_has_frontmatter_empty() {
+        assert!(!SkillInstaller::has_frontmatter(""));
+    }
+
+    #[test]
+    fn test_is_installed_not_installed() {
+        // Should return false when skill is not installed
+        assert!(!SkillInstaller::is_installed("nonexistent-skill"));
+    }
+
+    #[test]
+    fn test_remove_nonexistent_skill() {
+        // Should not fail when removing non-existent skill
+        let result = SkillInstaller::remove("nonexistent-skill");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_remove_from_agents_nonexistent() {
+        // Should not fail when removing from non-existent directory
+        let result = SkillInstaller::remove_from_agents("test-skill");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_remove_from_cursor_nonexistent() {
+        // Should not fail when removing from non-existent directory
+        let result = SkillInstaller::remove_from_cursor("test-skill");
+        assert!(result.is_ok());
+    }
+}
