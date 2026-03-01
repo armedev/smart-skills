@@ -27,7 +27,10 @@ enum Commands {
         skills: Vec<String>,
     },
     List,
-    Sync,
+    Sync {
+        #[arg(long = "remove-stale")]
+        remove_stale: bool,
+    },
     Status,
     Clear,
     Config,
@@ -57,7 +60,7 @@ fn main() {
             }
         }
         Commands::List => cli::list(),
-        Commands::Sync => cli::sync(),
+        Commands::Sync { remove_stale } => cli::sync(remove_stale),
         Commands::Status => cli::status(),
         Commands::Clear => cli::clear(),
         Commands::Config => cli::config_cmd(),

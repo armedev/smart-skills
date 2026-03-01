@@ -165,12 +165,28 @@ pub fn list() -> Result<(), String> {
     Ok(())
 }
 
-pub fn sync() -> Result<(), String> {
+pub fn sync(remove_stale: bool) -> Result<(), String> {
     println!("Syncing skills...");
 
     let available = SkillLoader::load_available_skills();
     let installed = SkillLoader::load_installed_skills();
 
+    // Remove stale skills if requested
+    if remove_stale {
+        let mut removed_count = 0;
+        for name in &installed {
+            if !available.contains_key(name) {
+                SkillInstaller::remove(name)?;
+                println!("  Removed stale: {}", name);
+                removed_count += 1;
+            }
+        }
+        if removed_count > 0 {
+            println!("Removed {} stale skill(s)", removed_count);
+        }
+    }
+
+    // Sync remaining installed skills
     for name in &installed {
         if let Some(skill) = available.get(name) {
             SkillInstaller::install(skill)?;
