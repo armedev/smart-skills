@@ -1,0 +1,24 @@
+[package]
+name = "smart-skills"
+version = "0.1.0"
+edition = "2021"
+description = "Agent skill management tool - manage and sync AI agent instructions"
+authors = ["you"]
+license = "MIT"
+repository = ""
+
+[lints.rust]
+unsafe_code = "forbid"
+warnings = "deny"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+crossterm = "0.29"
+dirs = "5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+walkdir = "2"
+
+[dev-dependencies]
+tempfile = "3"

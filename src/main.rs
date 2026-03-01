@@ -1,0 +1,71 @@
+mod cli;
+mod config;
+mod skills;
+
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(name = "smart-skills")]
+#[command(about = "Agent skill management tool", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Init {
+        #[arg(long = "skills-source", default_value = "")]
+        source: String,
+    },
+    Add {
+        #[arg(default_value = "")]
+        skills: Vec<String>,
+    },
+    Remove {
+        #[arg(default_value = "")]
+        skills: Vec<String>,
+    },
+    List,
+    Sync,
+    Status,
+    Clear,
+    Config,
+    SetSources {
+        #[arg(default_value = "")]
+        paths: Vec<String>,
+    },
+}
+
+fn main() {
+    let cli = Cli::parse();
+
+    let result = match cli.command {
+        Commands::Init { source } => cli::init(source),
+        Commands::Add { skills } => {
+            if skills.is_empty() {
+                cli::list()
+            } else {
+                cli::add(skills)
+            }
+        }
+        Commands::Remove { skills } => {
+            if skills.is_empty() {
+                cli::list()
+            } else {
+                cli::remove(skills)
+            }
+        }
+        Commands::List => cli::list(),
+        Commands::Sync => cli::sync(),
+        Commands::Status => cli::status(),
+        Commands::Clear => cli::clear(),
+        Commands::Config => cli::config_cmd(),
+        Commands::SetSources { paths } => cli::set_sources(paths),
+    };
+
+    if let Err(e) = result {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+}
