@@ -1,4 +1,4 @@
-use crate::config;
+use crate::config::{self, Config};
 use crate::skills::Skill;
 use std::fs;
 
@@ -8,9 +8,23 @@ pub struct SkillInstaller;
 #[allow(dead_code)]
 impl SkillInstaller {
     pub fn install(skill: &Skill) -> Result<(), String> {
-        Self::install_to_agents(skill)?;
-        Self::install_to_cursor(skill)?;
+        let cfg = Self::load_config();
+
+        if cfg.install_targets.agents {
+            Self::install_to_agents(skill)?;
+        }
+        if cfg.install_targets.cursor {
+            Self::install_to_cursor(skill)?;
+        }
         Ok(())
+    }
+
+    fn load_config() -> Config {
+        let project_config = config::project_config_path();
+        if project_config.exists() {
+            return Config::load(&project_config);
+        }
+        Config::default()
     }
 
     fn install_to_agents(skill: &Skill) -> Result<(), String> {
@@ -48,8 +62,14 @@ impl SkillInstaller {
     }
 
     pub fn remove(skill_name: &str) -> Result<(), String> {
-        Self::remove_from_agents(skill_name)?;
-        Self::remove_from_cursor(skill_name)?;
+        let cfg = Self::load_config();
+
+        if cfg.install_targets.agents {
+            Self::remove_from_agents(skill_name)?;
+        }
+        if cfg.install_targets.cursor {
+            Self::remove_from_cursor(skill_name)?;
+        }
         Ok(())
     }
 
