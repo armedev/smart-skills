@@ -3,9 +3,12 @@ name = "smart-skills"
 version = "0.1.0"
 edition = "2021"
 description = "Agent skill management tool - manage and sync AI agent instructions"
-authors = ["you"]
+authors = ["Armedev <epiratesdev@gmail.com>"]
 license = "MIT"
-repository = ""
+repository = "https://github.com/armedev/smart-skills"
+homepage = "https://github.com/armedev/smart-skills"
+keywords = ["cli", "agent", "skills", "mcp", "ai"]
+categories = ["command-line-utilities", "development-tools"]
 
 [lints.rust]
 unsafe_code = "forbid"
@@ -22,3 +25,7 @@ walkdir = "2"
 
 [dev-dependencies]
 tempfile = "3"
+
+[[bin]]
+name = "smart-skills"
+path = "src/main.rs"
