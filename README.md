@@ -12,16 +12,33 @@ Agent skill management tool - manage and sync AI agent instructions for opencode
 
 ## Installation
 
+### Via Cargo (recommended)
+
+```bash
+cargo install smart-skills
+```
+
+### Via Homebrew
+
+```bash
+brew tap armedev/smart-skills
+brew install smart-skills
+```
+
+### Via Install Script
+
+```bash
+curl -sL https://raw.githubusercontent.com/armedev/smart-skills/main/distribution/scripts/install.sh | bash
+```
+
+### From Source
+
 ```bash
 cargo build --release
 cargo install --path .
 ```
 
-Or from source:
-
-```bash
-cargo build
-```
+---
 
 ## Usage
 
