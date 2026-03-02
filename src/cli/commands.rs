@@ -286,13 +286,31 @@ pub fn list() -> Result<(), String> {
 }
 
 pub fn sync(remove_stale: bool) -> Result<(), String> {
+    let project_config = config::project_config_path();
+    let global_config = config::global_config_path();
+
+    if !project_config.exists() && !global_config.exists() {
+        println!(
+            "{}",
+            Colors::warning("No config found. Run 'smart-skills init' first.")
+        );
+        return Ok(());
+    }
+
     println!("{}...", Colors::header("Syncing skills"));
 
     let available = SkillLoader::load_available_skills();
     let installed = SkillLoader::load_installed_skills();
 
+    if installed.is_empty() && !remove_stale {
+        println!("  {}", Colors::dim("Nothing to sync"));
+        println!("{}", Colors::success("Done!"));
+        return Ok(());
+    }
+
+    let mut action_count = 0;
+
     if remove_stale {
-        let mut removed_count = 0;
         for name in &installed {
             if !available.contains_key(name) {
                 SkillInstaller::remove(name)?;
@@ -301,14 +319,14 @@ pub fn sync(remove_stale: bool) -> Result<(), String> {
                     Colors::success("Removed"),
                     Colors::skill(name)
                 );
-                removed_count += 1;
+                action_count += 1;
             }
         }
-        if removed_count > 0 {
+        if action_count > 0 {
             println!(
                 "{} {} stale skill(s)",
                 Colors::success("Removed"),
-                removed_count
+                action_count
             );
         }
     }
@@ -317,7 +335,12 @@ pub fn sync(remove_stale: bool) -> Result<(), String> {
         if let Some(skill) = available.get(name) {
             SkillInstaller::install(skill)?;
             println!("  {}: {}", Colors::success("Synced"), Colors::skill(name));
+            action_count += 1;
         }
+    }
+
+    if action_count == 0 {
+        println!("  {}", Colors::dim("Nothing to sync"));
     }
 
     println!("{}", Colors::success("Done!"));
@@ -424,7 +447,6 @@ pub fn config_cmd() -> Result<(), String> {
     println!("{}\n", Colors::header("Smart Skills Configuration"));
 
     let project_config = config::project_config_path();
-    let global_config = config::global_config_path();
 
     if project_config.exists() {
         println!("{}", Colors::dim(&project_config.display().to_string()));
@@ -441,60 +463,48 @@ pub fn config_cmd() -> Result<(), String> {
         println!("    - agents: {}", cfg.install_targets.agents);
         println!("    - cursor: {}", cfg.install_targets.cursor);
         println!("    - claude: {}", cfg.install_targets.claude);
-    } else if global_config.exists() {
-        println!("{}", Colors::dim(&global_config.display().to_string()));
-        let cfg = Config::load(&global_config);
-        println!("  {}:", Colors::header("Skill sources"));
-        for source in &cfg.skill_sources {
+
+        let sources = SkillLoader::get_skill_sources();
+        if !sources.is_empty() {
             println!(
-                "    - {} (priority: {})",
-                Colors::dim(&source.path),
-                source.priority
+                "\n{} (priority order):",
+                Colors::header("Effective skill sources")
             );
+            for source in &sources {
+                let path = std::path::Path::new(&source.path);
+                let exists = path.exists();
+                let count = if exists {
+                    std::fs::read_dir(path)
+                        .map(|entries| {
+                            entries
+                                .filter_map(|e| e.ok())
+                                .filter(|e| e.path().is_dir())
+                                .count()
+                        })
+                        .unwrap_or(0)
+                } else {
+                    0
+                };
+                let status = if exists {
+                    Colors::success("[ok]")
+                } else {
+                    Colors::error("[missing]")
+                };
+                println!(
+                    "  - {} ({} skill(s)) {}",
+                    Colors::dim(&source.path),
+                    count,
+                    status
+                );
+            }
         }
     } else {
         println!("  {}", Colors::dim("No config found"));
-        println!("  {}: smart-skills init", Colors::dim("Run"));
         println!(
             "  {}: {}",
-            Colors::dim("Or set up global config at:"),
-            Colors::dim(&global_config.display().to_string())
+            Colors::dim("Run"),
+            Colors::skill("smart-skills init")
         );
-    }
-
-    let sources = SkillLoader::get_skill_sources();
-    if !sources.is_empty() {
-        println!(
-            "\n{} (priority order):",
-            Colors::header("Effective skill sources")
-        );
-        for source in &sources {
-            let path = std::path::Path::new(&source.path);
-            let exists = path.exists();
-            let count = if exists {
-                std::fs::read_dir(path)
-                    .map(|entries| {
-                        entries
-                            .filter_map(|e| e.ok())
-                            .filter(|e| e.path().is_dir())
-                            .count()
-                    })
-                    .unwrap_or(0)
-            } else {
-                0
-            };
-            let status = if exists {
-                Colors::success("[ok]")
-            } else {
-                Colors::error("[missing]")
-            };
-            println!(
-                "  - {} ({} skill(s)) {}",
-                Colors::dim(&source.path),
-                count,
-                status
-            );
-        }
     }
 
     Ok(())
