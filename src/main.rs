@@ -21,11 +21,9 @@ enum Commands {
         targets: Option<Vec<String>>,
     },
     Add {
-        #[arg(default_value = "")]
         skills: Vec<String>,
     },
     Remove {
-        #[arg(default_value = "")]
         skills: Vec<String>,
     },
     List,
@@ -47,20 +45,8 @@ fn main() {
 
     let result = match cli.command {
         Commands::Init { source, targets } => cli::init(source, targets),
-        Commands::Add { skills } => {
-            if skills.is_empty() {
-                cli::list()
-            } else {
-                cli::add(skills)
-            }
-        }
-        Commands::Remove { skills } => {
-            if skills.is_empty() {
-                cli::list()
-            } else {
-                cli::remove(skills)
-            }
-        }
+        Commands::Add { skills } => cli::add(skills),
+        Commands::Remove { skills } => cli::remove(skills),
         Commands::List => cli::list(),
         Commands::Sync { remove_stale } => cli::sync(remove_stale),
         Commands::Status => cli::status(),
