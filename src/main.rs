@@ -14,26 +14,31 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[command(about = "Initialize project with skill sources and targets")]
     Init {
         #[arg(long = "skills-source", default_value = "")]
         source: String,
         #[arg(long = "targets", value_delimiter = ',')]
         targets: Option<Vec<String>>,
     },
-    Add {
-        skills: Vec<String>,
-    },
-    Remove {
-        skills: Vec<String>,
-    },
+    #[command(about = "Add skills to your project")]
+    Add { skills: Vec<String> },
+    #[command(about = "Remove installed skills")]
+    Remove { skills: Vec<String> },
+    #[command(about = "List available and installed skills")]
     List,
+    #[command(about = "Sync skills from sources to targets")]
     Sync {
         #[arg(long = "remove-stale")]
         remove_stale: bool,
     },
+    #[command(about = "Show skill status and validation")]
     Status,
+    #[command(about = "Remove all installed skills")]
     Clear,
+    #[command(about = "Display current configuration")]
     Config,
+    #[command(about = "Set skill source directories")]
     SetSources {
         #[arg(default_value = "")]
         paths: Vec<String>,

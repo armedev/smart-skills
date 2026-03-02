@@ -1,3 +1,4 @@
+use crate::cli::Colors;
 use crate::config::{self, Config, InstallTargets, SkillSource};
 use crate::skills::installer::SkillInstaller;
 use crate::skills::loader::SkillLoader;
@@ -89,7 +90,10 @@ pub fn init(source: String, targets: Option<Vec<String>>) -> Result<(), String> 
     println!("  Using skill source: {}", source_label);
 
     if !source_exists {
-        println!("  Error: Skill source directory does not exist");
+        println!(
+            "  {}: Skill source directory does not exist",
+            Colors::error("Error")
+        );
         println!();
         println!("  Please create the skill source directory and add skills:");
         println!("    mkdir -p {}", skill_source.clone());
@@ -100,7 +104,10 @@ pub fn init(source: String, targets: Option<Vec<String>>) -> Result<(), String> 
     let available = SkillLoader::load_available_skills();
 
     if available.is_empty() {
-        println!("  Error: No skills found in skill source");
+        println!(
+            "  {}: No skills found in skill source",
+            Colors::error("Error")
+        );
         println!();
         println!("  Add skills to your skill source directory:");
         println!("    # Create skill directories with SKILL.md files");
@@ -111,13 +118,16 @@ pub fn init(source: String, targets: Option<Vec<String>>) -> Result<(), String> 
         return Ok(());
     }
 
-    // Install skills only to selected targets
     for skill in available.values() {
         SkillInstaller::install(skill)?;
-        println!("  Installed: {}", skill.name);
+        println!(
+            "  {}: {}",
+            Colors::success("Installed"),
+            Colors::skill(&skill.name)
+        );
     }
 
-    println!("Done!");
+    println!("{}", Colors::success("Done!"));
 
     Ok(())
 }
@@ -169,29 +179,47 @@ fn prompt_for_targets() -> Result<Vec<String>, String> {
 
 pub fn add(skill_names: Vec<String>) -> Result<(), String> {
     let available = SkillLoader::load_available_skills();
+    let installed = SkillLoader::load_installed_skills();
 
     if skill_names.is_empty() {
-        println!("Available skills:");
+        println!(
+            "{} ({})",
+            Colors::header("Available skills"),
+            available.len()
+        );
         for (name, skill) in &available {
-            let installed = if SkillInstaller::is_installed(name) {
-                " [installed]"
+            let status = if installed.contains(name) {
+                Colors::success("[installed]")
             } else {
-                ""
+                Colors::dim("")
             };
-            println!("  - {}{}", name, installed);
+            println!("  - {} {}", Colors::skill(name), status);
             if !skill.description.is_empty() {
-                println!("    {}", skill.description);
+                println!("    {}", Colors::dim(&skill.description));
             }
         }
+        println!();
+        println!(
+            "To install: {}",
+            Colors::skill("smart-skills add <skill-name>")
+        );
         return Ok(());
     }
 
     for name in skill_names {
         if let Some(skill) = available.get(&name) {
             SkillInstaller::install(skill)?;
-            println!("  Installed: {}", name);
+            println!(
+                "  {}: {}",
+                Colors::success("Installed"),
+                Colors::skill(&name)
+            );
         } else {
-            println!("  Skill not found: {}", name);
+            println!(
+                "  {}: skill '{}' not found",
+                Colors::error("Error"),
+                Colors::skill(&name)
+            );
         }
     }
 
@@ -201,16 +229,24 @@ pub fn add(skill_names: Vec<String>) -> Result<(), String> {
 pub fn remove(skill_names: Vec<String>) -> Result<(), String> {
     if skill_names.is_empty() {
         let installed = SkillLoader::load_installed_skills();
-        println!("Installed skills:");
-        for name in installed {
-            println!("  - {}", name);
+        println!(
+            "{} ({})",
+            Colors::header("Installed skills"),
+            installed.len()
+        );
+        if installed.is_empty() {
+            println!("  {}", Colors::dim("No skills installed"));
+        } else {
+            for name in installed {
+                println!("  - {}", Colors::skill(&name));
+            }
         }
         return Ok(());
     }
 
     for name in &skill_names {
         SkillInstaller::remove(name)?;
-        println!("  Removed: {}", name);
+        println!("  {}: {}", Colors::success("Removed"), Colors::skill(name));
     }
 
     Ok(())
@@ -220,110 +256,143 @@ pub fn list() -> Result<(), String> {
     let available = SkillLoader::load_available_skills();
     let installed = SkillLoader::load_installed_skills();
 
-    println!("Available skills ({}):", available.len());
+    println!(
+        "{} ({})",
+        Colors::header("Available skills"),
+        available.len()
+    );
     for (name, skill) in &available {
         let status = if installed.contains(name) {
-            "[installed]"
+            Colors::success("[installed]")
         } else {
-            ""
+            Colors::dim("")
         };
-        println!("  - {} {}", name, status);
+        println!("  - {} {}", Colors::skill(name), status);
         if !skill.description.is_empty() {
-            println!("    {}", skill.description);
+            println!("    {}", Colors::dim(&skill.description));
         }
     }
 
-    println!("\nInstalled skills ({}):", installed.len());
+    println!(
+        "\n{} ({})",
+        Colors::header("Installed skills"),
+        installed.len()
+    );
     for name in &installed {
-        println!("  - {}", name);
+        println!("  - {}", Colors::skill(name));
     }
 
     Ok(())
 }
 
 pub fn sync(remove_stale: bool) -> Result<(), String> {
-    println!("Syncing skills...");
+    println!("{}...", Colors::header("Syncing skills"));
 
     let available = SkillLoader::load_available_skills();
     let installed = SkillLoader::load_installed_skills();
 
-    // Remove stale skills if requested
     if remove_stale {
         let mut removed_count = 0;
         for name in &installed {
             if !available.contains_key(name) {
                 SkillInstaller::remove(name)?;
-                println!("  Removed stale: {}", name);
+                println!(
+                    "  {} stale: {}",
+                    Colors::success("Removed"),
+                    Colors::skill(name)
+                );
                 removed_count += 1;
             }
         }
         if removed_count > 0 {
-            println!("Removed {} stale skill(s)", removed_count);
+            println!(
+                "{} {} stale skill(s)",
+                Colors::success("Removed"),
+                removed_count
+            );
         }
     }
 
-    // Sync remaining installed skills
     for name in &installed {
         if let Some(skill) = available.get(name) {
             SkillInstaller::install(skill)?;
-            println!("  Synced: {}", name);
+            println!("  {}: {}", Colors::success("Synced"), Colors::skill(name));
         }
     }
 
-    println!("Done!");
+    println!("{}", Colors::success("Done!"));
 
     Ok(())
 }
 
 pub fn status() -> Result<(), String> {
-    println!("=== Skill Status ===\n");
+    println!("{}\n", Colors::header("Skill Status"));
 
     let installed = SkillLoader::load_installed_skills();
 
     if installed.is_empty() {
-        println!("No skills installed.");
+        println!("  {}", Colors::dim("No skills installed"));
         return Ok(());
     }
 
-    println!("Installed skills:");
+    println!("{}:", Colors::header("Installed"));
     for name in &installed {
-        println!("  - {}", name);
+        println!("  - {}", Colors::skill(name));
     }
 
-    println!("\n=== Skill Validation ===\n");
+    println!("\n{}\n", Colors::header("Validation"));
 
     let validation = SkillLoader::validate_skills();
 
     if validation.valid {
-        println!("All skills are valid!");
+        println!("  {}", Colors::success("All skills are valid!"));
     } else {
-        println!("Found {} error(s):", validation.errors.len());
+        println!(
+            "  {} {} error(s):",
+            Colors::error("Found"),
+            validation.errors.len()
+        );
         for error in &validation.errors {
-            println!("  [ERROR] {}: {}", error.skill, error.message);
+            println!(
+                "    {} {}: {}",
+                Colors::error("[ERROR]"),
+                Colors::skill(&error.skill),
+                error.message
+            );
         }
     }
 
     if !validation.warnings.is_empty() {
-        println!("\nWarnings ({}):", validation.warnings.len());
+        println!(
+            "\n  {} ({}):",
+            Colors::warning("Warnings"),
+            validation.warnings.len()
+        );
         for warning in &validation.warnings {
-            println!("  [WARN] {}", warning);
+            println!("    {}", Colors::warning(warning));
         }
     }
 
-    println!("\n=== Skill Sources ===\n");
+    println!("\n{}", Colors::header("Skill Sources"));
 
     let sources = SkillLoader::get_skill_sources();
     if sources.is_empty() {
-        println!("No skill sources configured.");
-        println!("  Run 'smart-skills init' to set up default sources");
+        println!("  {}", Colors::dim("No skill sources configured"));
+        println!("  {}: smart-skills init", Colors::dim("Run"));
     } else {
-        println!("Configured sources (priority order):");
+        println!("  {}", Colors::dim("Configured sources (priority order):"));
         for source in &sources {
             let exists = std::path::Path::new(&source.path).exists();
-            let status = if exists { "[exists]" } else { "[not found]" };
+            let status = if exists {
+                Colors::success("[ok]")
+            } else {
+                Colors::error("[not found]")
+            };
             println!(
-                "  - {} (priority: {}) {}",
-                source.path, source.priority, status
+                "    - {} (priority: {}) {}",
+                Colors::dim(&source.path),
+                source.priority,
+                status
             );
         }
     }
@@ -332,53 +401,73 @@ pub fn status() -> Result<(), String> {
 }
 
 pub fn clear() -> Result<(), String> {
-    println!("Clearing all skills...");
-
     let installed = SkillLoader::load_installed_skills();
+
+    if installed.is_empty() {
+        println!("{}", Colors::dim("Nothing to clear"));
+        return Ok(());
+    }
+
+    println!("{}...", Colors::header("Clearing all skills"));
 
     for name in &installed {
         SkillInstaller::remove(name)?;
-        println!("  Removed: {}", name);
+        println!("  {}: {}", Colors::success("Removed"), Colors::skill(name));
     }
 
-    println!("Done!");
+    println!("{}", Colors::success("Done!"));
 
     Ok(())
 }
 
 pub fn config_cmd() -> Result<(), String> {
+    println!("{}\n", Colors::header("Smart Skills Configuration"));
+
     let project_config = config::project_config_path();
     let global_config = config::global_config_path();
 
-    println!("=== Smart Skills Configuration ===\n");
-
     if project_config.exists() {
-        println!("Project config: {}", project_config.display());
+        println!("{}", Colors::dim(&project_config.display().to_string()));
         let cfg = Config::load(&project_config);
-        println!("  Skill sources:");
+        println!("  {}:", Colors::header("Skill sources"));
         for source in &cfg.skill_sources {
-            println!("    - {} (priority: {})", source.path, source.priority);
+            println!(
+                "    - {} (priority: {})",
+                Colors::dim(&source.path),
+                source.priority
+            );
         }
-        println!("  Install targets:");
+        println!("  {}:", Colors::header("Install targets"));
         println!("    - agents: {}", cfg.install_targets.agents);
         println!("    - cursor: {}", cfg.install_targets.cursor);
         println!("    - claude: {}", cfg.install_targets.claude);
     } else if global_config.exists() {
-        println!("Global config: {}", global_config.display());
+        println!("{}", Colors::dim(&global_config.display().to_string()));
         let cfg = Config::load(&global_config);
-        println!("  Skill sources:");
+        println!("  {}:", Colors::header("Skill sources"));
         for source in &cfg.skill_sources {
-            println!("    - {} (priority: {})", source.path, source.priority);
+            println!(
+                "    - {} (priority: {})",
+                Colors::dim(&source.path),
+                source.priority
+            );
         }
     } else {
-        println!("No config found.");
-        println!("  Run 'smart-skills init' to create a project config");
-        println!("  Or set up global config at: {}", global_config.display());
+        println!("  {}", Colors::dim("No config found"));
+        println!("  {}: smart-skills init", Colors::dim("Run"));
+        println!(
+            "  {}: {}",
+            Colors::dim("Or set up global config at:"),
+            Colors::dim(&global_config.display().to_string())
+        );
     }
 
     let sources = SkillLoader::get_skill_sources();
     if !sources.is_empty() {
-        println!("\nEffective skill sources (priority order):");
+        println!(
+            "\n{} (priority order):",
+            Colors::header("Effective skill sources")
+        );
         for source in &sources {
             let path = std::path::Path::new(&source.path);
             let exists = path.exists();
@@ -394,11 +483,16 @@ pub fn config_cmd() -> Result<(), String> {
             } else {
                 0
             };
+            let status = if exists {
+                Colors::success("[ok]")
+            } else {
+                Colors::error("[missing]")
+            };
             println!(
                 "  - {} ({} skill(s)) {}",
-                source.path,
+                Colors::dim(&source.path),
                 count,
-                if exists { "[ok]" } else { "[missing]" }
+                status
             );
         }
     }
@@ -429,7 +523,11 @@ pub fn set_sources(paths: Vec<String>) -> Result<(), String> {
 
     println!("Updated skill sources:");
     for source in &config.skill_sources {
-        println!("  - {} (priority: {})", source.path, source.priority);
+        println!(
+            "  - {} (priority: {})",
+            Colors::skill(&source.path),
+            source.priority
+        );
     }
 
     Ok(())
