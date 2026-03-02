@@ -2,8 +2,9 @@ use crate::config::{self, Config, InstallTargets, SkillSource};
 use crate::skills::installer::SkillInstaller;
 use crate::skills::loader::SkillLoader;
 use std::fs;
+use std::io::{stdout, IsTerminal};
 
-pub fn init(source: String) -> Result<(), String> {
+pub fn init(source: String, targets: Option<Vec<String>>) -> Result<(), String> {
     let global_skills_path = config::global_skills_dir();
     let global_exists = global_skills_path.exists();
 
@@ -25,6 +26,21 @@ pub fn init(source: String) -> Result<(), String> {
         return Ok(());
     }
 
+    // Determine which targets to use
+    let final_targets: Vec<String> = match targets {
+        Some(t) => t, // Explicit targets provided - use them
+        None => {
+            // No targets provided - check if interactive
+            if stdout().is_terminal() {
+                // Interactive mode - prompt user
+                prompt_for_targets()?
+            } else {
+                // Non-interactive - default to agents only
+                vec!["agents".to_string()]
+            }
+        }
+    };
+
     let skill_source = if !source.is_empty() {
         source.clone()
     } else if global_exists {
@@ -43,17 +59,30 @@ pub fn init(source: String) -> Result<(), String> {
         "default: skills/".to_string()
     };
 
+    // Create directories only for selected targets
     fs::create_dir_all(config::project_config_dir()).map_err(|e| e.to_string())?;
-    fs::create_dir_all(config::agents_skills_dir()).map_err(|e| e.to_string())?;
-    fs::create_dir_all(config::cursor_rules_dir()).map_err(|e| e.to_string())?;
-    fs::create_dir_all(config::claude_rules_dir()).map_err(|e| e.to_string())?;
 
+    if final_targets.contains(&"agents".to_string()) {
+        fs::create_dir_all(config::agents_skills_dir()).map_err(|e| e.to_string())?;
+    }
+    if final_targets.contains(&"cursor".to_string()) {
+        fs::create_dir_all(config::cursor_rules_dir()).map_err(|e| e.to_string())?;
+    }
+    if final_targets.contains(&"claude".to_string()) {
+        fs::create_dir_all(config::claude_rules_dir()).map_err(|e| e.to_string())?;
+    }
+
+    // Set config with only selected targets enabled
     let config = Config {
         skill_sources: vec![SkillSource {
             path: skill_source.clone(),
             priority: 10,
         }],
-        install_targets: InstallTargets::default(),
+        install_targets: InstallTargets {
+            agents: final_targets.contains(&"agents".to_string()),
+            cursor: final_targets.contains(&"cursor".to_string()),
+            claude: final_targets.contains(&"claude".to_string()),
+        },
     };
 
     config.save(&config::project_config_path())?;
@@ -82,6 +111,7 @@ pub fn init(source: String) -> Result<(), String> {
         return Ok(());
     }
 
+    // Install skills only to selected targets
     for skill in available.values() {
         SkillInstaller::install(skill)?;
         println!("  Installed: {}", skill.name);
@@ -90,6 +120,51 @@ pub fn init(source: String) -> Result<(), String> {
     println!("Done!");
 
     Ok(())
+}
+
+fn prompt_for_targets() -> Result<Vec<String>, String> {
+    println!("Select targets for skill installation:");
+    println!("  [1] agents - opencode/nvim");
+    println!("  [2] cursor - Cursor IDE");
+    println!("  [3] claude - Claude Code");
+    println!("  [4] all");
+    println!();
+    println!("Enter numbers separated by commas (default: 1):");
+
+    let mut input = String::new();
+    std::io::stdin()
+        .read_line(&mut input)
+        .map_err(|e| e.to_string())?;
+
+    let input = input.trim();
+
+    if input.is_empty() {
+        return Ok(vec!["agents".to_string()]);
+    }
+
+    let mut targets = Vec::new();
+
+    for choice in input.split(',') {
+        match choice.trim() {
+            "1" => targets.push("agents".to_string()),
+            "2" => targets.push("cursor".to_string()),
+            "3" => targets.push("claude".to_string()),
+            "4" => {
+                return Ok(vec![
+                    "agents".to_string(),
+                    "cursor".to_string(),
+                    "claude".to_string(),
+                ]);
+            }
+            _ => return Err(format!("Invalid choice: {}", choice)),
+        }
+    }
+
+    if targets.is_empty() {
+        targets.push("agents".to_string());
+    }
+
+    Ok(targets)
 }
 
 pub fn add(skill_names: Vec<String>) -> Result<(), String> {

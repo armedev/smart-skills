@@ -17,6 +17,8 @@ enum Commands {
     Init {
         #[arg(long = "skills-source", default_value = "")]
         source: String,
+        #[arg(long = "targets", value_delimiter = ',')]
+        targets: Option<Vec<String>>,
     },
     Add {
         #[arg(default_value = "")]
@@ -44,7 +46,7 @@ fn main() {
     let cli = Cli::parse();
 
     let result = match cli.command {
-        Commands::Init { source } => cli::init(source),
+        Commands::Init { source, targets } => cli::init(source, targets),
         Commands::Add { skills } => {
             if skills.is_empty() {
                 cli::list()

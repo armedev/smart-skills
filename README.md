@@ -45,16 +45,22 @@ cargo install --path .
 ### Initialize a project
 
 ```bash
-smart-skills init                                    # Use global skills (~/.config/smart-skills/skills/)
+smart-skills init                                    # Default: agents only (non-interactive)
 smart-skills init --skills-source ./my-skills       # Use custom skill source
 smart-skills init --skills-source skills            # Use local skills/ directory
+smart-skills init --targets agents,cursor           # Specify targets explicitly
+smart-skills init --targets claude                 # Only Claude Code
 ```
 
-This creates:
-- `.smart-skills/config.json` - Project config with skill sources
-- `.agents/skills/` - Skills for opencode/nvim
-- `.cursor/rules/` - Skills for Cursor
-- `.claude/rules/` - Skills for Claude Code
+**Targets:**
+- `agents` - opencode/nvim (`.agents/skills/`)
+- `cursor` - Cursor IDE (`.cursor/rules/`)
+- `claude` - Claude Code (`.claude/rules/`)
+
+**Behavior:**
+- In interactive terminal: prompts you to select targets
+- In non-interactive (piped): defaults to `agents` only
+- With `--targets`: uses specified targets non-interactively
 
 ### Global Skills
 
@@ -122,10 +128,17 @@ smart-skills clear
   "install_targets": {
     "agents": true,
     "cursor": true,
-    "claude": true
+    "claude": false
   }
 }
 ```
+
+**Install Targets:**
+- `agents`: Enable/disable `.agents/skills/` installation
+- `cursor`: Enable/disable `.cursor/rules/` installation
+- `claude`: Enable/disable `.claude/rules/` installation
+
+Edit this file and run `smart-skills sync` to apply changes.
 
 ### Skill Sources
 
