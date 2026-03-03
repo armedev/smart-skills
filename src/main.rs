@@ -3,6 +3,7 @@ mod config;
 mod skills;
 
 use clap::{Parser, Subcommand};
+use cli::Colors;
 
 #[derive(Parser)]
 #[command(name = "smart-skills")]
@@ -39,10 +40,7 @@ enum Commands {
     #[command(about = "Display current configuration")]
     Config,
     #[command(about = "Set skill source directories")]
-    SetSources {
-        #[arg(default_value = "")]
-        paths: Vec<String>,
-    },
+    SetSources { paths: Vec<String> },
 }
 
 fn main() {
@@ -61,7 +59,7 @@ fn main() {
     };
 
     if let Err(e) = result {
-        eprintln!("Error: {}", e);
+        eprintln!("{}", Colors::error(&e));
         std::process::exit(1);
     }
 }

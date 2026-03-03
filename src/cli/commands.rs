@@ -5,6 +5,17 @@ use crate::skills::loader::SkillLoader;
 use std::fs;
 use std::io::{stdout, IsTerminal};
 
+fn is_initialized() -> bool {
+    config::project_config_path().exists()
+}
+
+fn ensure_initialized() -> Result<(), String> {
+    if !is_initialized() {
+        return Err("Not initialized. Run 'smart-skills init' first.".to_string());
+    }
+    Ok(())
+}
+
 pub fn init(source: String, targets: Option<Vec<String>>) -> Result<(), String> {
     let global_skills_path = config::global_skills_dir();
     let global_exists = global_skills_path.exists();
@@ -178,6 +189,8 @@ fn prompt_for_targets() -> Result<Vec<String>, String> {
 }
 
 pub fn add(skill_names: Vec<String>) -> Result<(), String> {
+    ensure_initialized()?;
+
     let available = SkillLoader::load_available_skills();
     let installed = SkillLoader::load_installed_skills();
 
@@ -227,6 +240,8 @@ pub fn add(skill_names: Vec<String>) -> Result<(), String> {
 }
 
 pub fn remove(skill_names: Vec<String>) -> Result<(), String> {
+    ensure_initialized()?;
+
     if skill_names.is_empty() {
         let installed = SkillLoader::load_installed_skills();
         println!(
@@ -253,6 +268,8 @@ pub fn remove(skill_names: Vec<String>) -> Result<(), String> {
 }
 
 pub fn list() -> Result<(), String> {
+    ensure_initialized()?;
+
     let available = SkillLoader::load_available_skills();
     let installed = SkillLoader::load_installed_skills();
 
@@ -286,10 +303,7 @@ pub fn list() -> Result<(), String> {
 }
 
 pub fn sync(remove_stale: bool) -> Result<(), String> {
-    let project_config = config::project_config_path();
-    let global_config = config::global_config_path();
-
-    if !project_config.exists() && !global_config.exists() {
+    if !is_initialized() {
         println!(
             "{}",
             Colors::warning("No config found. Run 'smart-skills init' first.")
@@ -349,6 +363,8 @@ pub fn sync(remove_stale: bool) -> Result<(), String> {
 }
 
 pub fn status() -> Result<(), String> {
+    ensure_initialized()?;
+
     println!("{}\n", Colors::header("Skill Status"));
 
     let installed = SkillLoader::load_installed_skills();
@@ -424,6 +440,8 @@ pub fn status() -> Result<(), String> {
 }
 
 pub fn clear() -> Result<(), String> {
+    ensure_initialized()?;
+
     let installed = SkillLoader::load_installed_skills();
 
     if installed.is_empty() {
@@ -444,73 +462,67 @@ pub fn clear() -> Result<(), String> {
 }
 
 pub fn config_cmd() -> Result<(), String> {
+    ensure_initialized()?;
+
     println!("{}\n", Colors::header("Smart Skills Configuration"));
 
     let project_config = config::project_config_path();
+    println!("{}", Colors::dim(&project_config.display().to_string()));
 
-    if project_config.exists() {
-        println!("{}", Colors::dim(&project_config.display().to_string()));
-        let cfg = Config::load(&project_config);
-        println!("  {}:", Colors::header("Skill sources"));
-        for source in &cfg.skill_sources {
-            println!(
-                "    - {} (priority: {})",
-                Colors::dim(&source.path),
-                source.priority
-            );
-        }
-        println!("  {}:", Colors::header("Install targets"));
-        println!("    - agents: {}", cfg.install_targets.agents);
-        println!("    - cursor: {}", cfg.install_targets.cursor);
-        println!("    - claude: {}", cfg.install_targets.claude);
-
-        let sources = SkillLoader::get_skill_sources();
-        if !sources.is_empty() {
-            println!(
-                "\n{} (priority order):",
-                Colors::header("Effective skill sources")
-            );
-            for source in &sources {
-                let path = std::path::Path::new(&source.path);
-                let exists = path.exists();
-                let count = if exists {
-                    std::fs::read_dir(path)
-                        .map(|entries| {
-                            entries
-                                .filter_map(|e| e.ok())
-                                .filter(|e| e.path().is_dir())
-                                .count()
-                        })
-                        .unwrap_or(0)
-                } else {
-                    0
-                };
-                let status = if exists {
-                    Colors::success("[ok]")
-                } else {
-                    Colors::error("[missing]")
-                };
-                println!(
-                    "  - {} ({} skill(s)) {}",
-                    Colors::dim(&source.path),
-                    count,
-                    status
-                );
-            }
-        }
-    } else {
-        println!("  {}", Colors::dim("No config found"));
+    let cfg = Config::load(&project_config);
+    println!("  {}:", Colors::header("Skill sources"));
+    for source in &cfg.skill_sources {
+        let path = std::path::Path::new(&source.path);
+        let exists = path.exists();
+        let count = if exists {
+            std::fs::read_dir(path)
+                .map(|entries| {
+                    entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| e.path().is_dir())
+                        .count()
+                })
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        let status = if exists {
+            Colors::success("[ok]")
+        } else {
+            Colors::error("[missing]")
+        };
         println!(
-            "  {}: {}",
-            Colors::dim("Run"),
-            Colors::skill("smart-skills init")
+            "    - {} (priority: {}, {} skill(s)) {}",
+            Colors::dim(&source.path),
+            source.priority,
+            count,
+            status
         );
     }
+
+    println!("  {}:", Colors::header("Install targets"));
+    println!("    - agents: {}", cfg.install_targets.agents);
+    println!("    - cursor: {}", cfg.install_targets.cursor);
+    println!("    - claude: {}", cfg.install_targets.claude);
 
     Ok(())
 }
 
 pub fn set_sources(paths: Vec<String>) -> Result<(), String> {
+    if paths.is_empty() {
+        println!(
+            "{}",
+            Colors::dim("Usage: smart-skills set-sources <path>...")
+        );
+        println!(
+            "{}",
+            Colors::dim("Example: smart-skills set-sources ./skills ~/my-skills")
+        );
+        return Ok(());
+    }
+
+    ensure_initialized()?;
+
     let mut sources: Vec<SkillSource> = paths
         .into_iter()
         .enumerate()
@@ -522,12 +534,15 @@ pub fn set_sources(paths: Vec<String>) -> Result<(), String> {
 
     sources.sort_by(|a, b| b.priority.cmp(&a.priority));
 
+    // Load existing config to preserve targets
+    let project_config = config::project_config_path();
+    let existing_config = Config::load(&project_config);
+
     let config = Config {
         skill_sources: sources,
-        install_targets: InstallTargets::default(),
+        install_targets: existing_config.install_targets,
     };
 
-    let project_config = config::project_config_path();
     fs::create_dir_all(config::project_config_dir()).map_err(|e| e.to_string())?;
     config.save(&project_config)?;
 

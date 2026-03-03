@@ -25,31 +25,12 @@ impl SkillLoader {
         let mut skills = HashMap::new();
         let config = Self::load_config();
 
-        let mut sources: Vec<(PathBuf, SkillSourceEnum)> = Vec::new();
-
-        if config.skill_sources.is_empty() {
-            // No sources configured - use defaults (global and project)
-            let global_path = config::global_skills_dir();
-            if global_path.exists() {
-                sources.push((global_path, SkillSourceEnum::Global));
+        // Only use configured sources - no global fallback
+        for source in &config.skill_sources {
+            let path = PathBuf::from(&source.path);
+            if path.exists() {
+                Self::load_skills_from_dir(path.as_path(), SkillSourceEnum::Project, &mut skills);
             }
-
-            let project_path = config::project_skills_dir();
-            if project_path.exists() {
-                sources.push((project_path, SkillSourceEnum::Project));
-            }
-        } else {
-            // Sources configured - use only those
-            for source in &config.skill_sources {
-                let path = PathBuf::from(&source.path);
-                if path.exists() {
-                    sources.push((path, SkillSourceEnum::Project));
-                }
-            }
-        }
-
-        for (path, source_enum) in sources {
-            Self::load_skills_from_dir(path.as_path(), source_enum, &mut skills);
         }
 
         skills
@@ -61,11 +42,7 @@ impl SkillLoader {
             return Config::load(&project_config);
         }
 
-        let global_config = config::global_config_path();
-        if global_config.exists() {
-            return Config::load(&global_config);
-        }
-
+        // No project config - return empty default (no global config support)
         Config::default()
     }
 
@@ -163,29 +140,8 @@ impl SkillLoader {
 
     pub fn get_skill_sources() -> Vec<SkillSource> {
         let config = Self::load_config();
-        if !config.skill_sources.is_empty() {
-            return config.skill_sources;
-        }
-
-        let mut default_sources = Vec::new();
-
-        let project_path = config::project_skills_dir();
-        if project_path.exists() {
-            default_sources.push(SkillSource {
-                path: "skills".to_string(),
-                priority: 10,
-            });
-        }
-
-        let global_path = config::global_skills_dir();
-        if global_path.exists() {
-            default_sources.push(SkillSource {
-                path: global_path.to_string_lossy().to_string(),
-                priority: 5,
-            });
-        }
-
-        default_sources
+        // Only return configured sources - no global fallback
+        config.skill_sources
     }
 }
 

@@ -25,8 +25,8 @@ impl Default for InstallTargets {
     fn default() -> Self {
         Self {
             agents: true,
-            cursor: true,
-            claude: true,
+            cursor: false,
+            claude: false,
         }
     }
 }
@@ -50,6 +50,7 @@ impl Config {
     }
 }
 
+#[allow(dead_code)]
 pub fn global_config_path() -> PathBuf {
     global_config_dir().join("config.json")
 }
@@ -65,6 +66,7 @@ pub fn global_skills_dir() -> PathBuf {
     global_config_dir().join("skills")
 }
 
+#[allow(dead_code)]
 pub fn project_skills_dir() -> PathBuf {
     PathBuf::from("skills")
 }
@@ -103,8 +105,8 @@ mod tests {
         let config = Config::default();
         assert!(config.skill_sources.is_empty());
         assert!(config.install_targets.agents);
-        assert!(config.install_targets.cursor);
-        assert!(config.install_targets.claude);
+        assert!(!config.install_targets.cursor);
+        assert!(!config.install_targets.claude);
     }
 
     #[test]
