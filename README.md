@@ -6,7 +6,7 @@ Agent skill management tool - manage and sync AI agent instructions for opencode
 
 - **Config-Based Skills**: Configure skill sources in JSON config
 - **Per-Project Skills**: Add custom skills in configured directories
-- **Global Skills**: Support for `~/.config/smart-skills/skills/`
+- **Global Config Support**: Use `~/.config/smart-skills/config.json` as template for new projects
 - **Skill Validation**: Validate skill structure and content
 - **Multi-Platform**: Installs skills for opencode, nvim, Cursor, and Claude Code
 
@@ -45,11 +45,53 @@ cargo install --path .
 ### Initialize a project
 
 ```bash
-smart-skills init                                    # Default: agents only (non-interactive)
-smart-skills init --skills-source ./my-skills       # Use custom skill source
-smart-skills init --skills-source skills            # Use local skills/ directory
-smart-skills init --targets agents,cursor           # Specify targets explicitly
-smart-skills init --targets claude                 # Only Claude Code
+smart-skills init
+```
+
+<details>
+<summary><strong>How init works (click to expand)</strong></summary>
+
+The `init` command follows this logic:
+
+#### 1. No arguments provided
+
+| Scenario | Behavior |
+|----------|----------|
+| Global config exists | Copies config to project, resolves source paths |
+| Global config missing but global skills exist | Uses global skills dir as source, prompts for targets (interactive) or defaults to `agents` (non-interactive) |
+| No global config, no global skills | Leaves sources empty, prompts for targets (interactive) or defaults to `agents` (non-interactive) |
+
+#### 2. With arguments
+
+| Argument | Behavior |
+|----------|----------|
+| `--skills-source <path>` | Override source, use global config targets (or default to `agents`) |
+| `--targets a,c` | Use global config source, override targets |
+| Both provided | Use CLI values for both |
+
+#### Path Resolution
+
+When global config has relative paths (e.g., `"path": "skills"`), they are resolved:
+1. First check: relative to current project directory
+2. Second check: relative to global config directory (`~/.config/smart-skills/`)
+
+</details>
+
+### Quick Examples
+
+```bash
+# Default initialization (uses global config if available)
+smart-skills init
+
+# Use custom skill source
+smart-skills init --skills-source ./my-skills
+
+# Use local skills/ directory
+smart-skills init --skills-source skills
+
+# Specify targets explicitly
+smart-skills init --targets agents,cursor
+smart-skills init --targets claude
 ```
 
 **Targets:**
@@ -57,15 +99,7 @@ smart-skills init --targets claude                 # Only Claude Code
 - `cursor` - Cursor IDE (`.cursor/rules/`)
 - `claude` - Claude Code (`.claude/rules/`)
 
-**Behavior:**
-- In interactive terminal: prompts you to select targets
-- In non-interactive (piped): defaults to `agents` only
-- With `--targets`: uses specified targets non-interactively
-
-### Global Skills
-
-By default, init uses skills from:
-- `~/.config/smart-skills/skills/` (all platforms)
+---
 
 ### Add skills
 
@@ -113,6 +147,81 @@ smart-skills set-sources ./my-skills /global/skills  # Set skill sources
 smart-skills clear
 ```
 
+---
+
+## Global Config
+
+<details>
+<summary><strong>What is global config? (click to expand)</strong></summary>
+
+Global config allows you to define a standard skill configuration that new projects can inherit.
+
+### Location
+```
+~/.config/smart-skills/config.json
+```
+
+### Example
+```json
+{
+  "skill_sources": [
+    {
+      "path": "~/my-skills",
+      "priority": 10
+    }
+  ],
+  "install_targets": {
+    "agents": true,
+    "cursor": true,
+    "claude": false
+  }
+}
+```
+
+### Benefits
+
+1. **One-time setup**: Configure once, use in all projects
+2. **Team consistency**: Share the config file via dotfiles
+3. **Path resolution**: Relative paths are automatically resolved when initializing new projects
+
+### How it works
+
+- When you run `smart-skills init` without arguments, it copies global config to your project
+- Relative paths in global config are resolved to absolute paths
+- You can override either source or targets via CLI arguments
+
+### Setup Global Config
+
+```bash
+# Create global config directory
+mkdir -p ~/.config/smart-skills
+
+# Create config with your preferred settings
+cat > ~/.config/smart-skills/config.json << 'EOF'
+{
+  "skill_sources": [
+    {
+      "path": "~/my-skills",
+      "priority": 10
+    }
+  ],
+  "install_targets": {
+    "agents": true,
+    "cursor": true,
+    "claude": false
+  }
+}
+EOF
+
+# Now any new project will use this config
+cd ~/my-new-project
+smart-skills init
+```
+
+</details>
+
+---
+
 ## Configuration
 
 ### Project Config (`.smart-skills/config.json`)
@@ -145,9 +254,7 @@ Edit this file and run `smart-skills sync` to apply changes.
 - **path**: Path to skill directory (relative or absolute)
 - **priority**: Higher priority sources are checked first (10 = highest)
 
-### Global Config
-
-You can also set up global skills at `~/.config/smart-skills/config.json`
+---
 
 ## Skill Structure
 
@@ -169,12 +276,7 @@ Run `smart-skills status` to validate:
 - Missing content
 - Proper formatting (## headers or bullet points)
 
-## Priority Order
-
-Skills are loaded in this order:
-
-1. Project config skill sources (by priority)
-2. Global skills (`~/.config/smart-skills/skills/`)
+---
 
 ## Adding Custom Skills
 
@@ -198,6 +300,8 @@ Skills are loaded in this order:
    smart-skills sync
    ```
 
+---
+
 ## Structure
 
 ```
@@ -207,7 +311,8 @@ smart-skills/
 │   ├── main.rs
 │   ├── cli/
 │   │   ├── commands.rs
-│   │   ├── picker.rs
+│   │   ├── init.rs
+│   │   ├── colors.rs
 │   │   └── mod.rs
 │   ├── skills/
 │   │   ├── mod.rs
@@ -215,5 +320,8 @@ smart-skills/
 │   │   └── installer.rs
 │   └── config/
 │       └── mod.rs
+├── tests/
+│   ├── init_tests.rs
+│   └── ...
 └── README.md
 ```
