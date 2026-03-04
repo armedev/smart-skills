@@ -57,7 +57,7 @@ The `init` command follows this logic:
 
 | Scenario | Behavior |
 |----------|----------|
-| Global config exists | Copies config to project, resolves source paths |
+| Global config exists | Uses global config as template, resolves source paths to absolute |
 | Global config missing but global skills exist | Uses global skills dir as source, prompts for targets (interactive) or defaults to `agents` (non-interactive) |
 | No global config, no global skills | Leaves sources empty, prompts for targets (interactive) or defaults to `agents` (non-interactive) |
 
@@ -71,9 +71,9 @@ The `init` command follows this logic:
 
 #### Path Resolution
 
-When global config has relative paths (e.g., `"path": "skills"`), they are resolved:
-1. First check: relative to current project directory
-2. Second check: relative to global config directory (`~/.config/smart-skills/`)
+When global config has relative paths (e.g., `"path": "skills"`), they are resolved relative to global config directory (`~/.config/smart-skills/`).
+
+CLI source paths are only resolved relative to current project directory (no fallback to global).
 
 </details>
 
@@ -103,20 +103,26 @@ smart-skills init --targets claude
 
 ### Add skills
 
+> Requires: `smart-skills init` to have been run first
+
 ```bash
 smart-skills add planning
 smart-skills add planning execution  # Add multiple
-smart-skills add                     # Show available skills
+smart-skills add                     # Show available skills (requires init)
 ```
 
 ### Remove skills
 
+> Requires: `smart-skills init` to have been run first
+
 ```bash
 smart-skills remove planning
-smart-skills remove                 # Show installed skills
+smart-skills remove                 # Show installed skills (requires init)
 ```
 
 ### List skills
+
+> Requires: `smart-skills init` to have been run first
 
 ```bash
 smart-skills list
@@ -124,11 +130,15 @@ smart-skills list
 
 ### Sync skills
 
+> Requires: `smart-skills init` to have been run first
+
 ```bash
 smart-skills sync
 ```
 
 ### Check status (with validation)
+
+> Requires: `smart-skills init` to have been run first
 
 ```bash
 smart-skills status
@@ -136,12 +146,16 @@ smart-skills status
 
 ### Config management
 
+> Requires: `smart-skills init` to have been run first
+
 ```bash
 smart-skills config              # Show current config
 smart-skills set-sources ./my-skills /global/skills  # Set skill sources
 ```
 
 ### Clear all skills
+
+> Requires: `smart-skills init` to have been run first
 
 ```bash
 smart-skills clear
@@ -172,7 +186,7 @@ Global config allows you to define a standard skill configuration that new proje
   ],
   "install_targets": {
     "agents": true,
-    "cursor": true,
+    "cursor": false,
     "claude": false
   }
 }
@@ -186,8 +200,8 @@ Global config allows you to define a standard skill configuration that new proje
 
 ### How it works
 
-- When you run `smart-skills init` without arguments, it copies global config to your project
-- Relative paths in global config are resolved to absolute paths
+- When you run `smart-skills init` without arguments, it uses global config as a template for your project
+- Relative paths in global config are resolved to absolute paths (relative to global config directory)
 - You can override either source or targets via CLI arguments
 
 ### Setup Global Config
@@ -207,11 +221,10 @@ cat > ~/.config/smart-skills/config.json << 'EOF'
   ],
   "install_targets": {
     "agents": true,
-    "cursor": true,
+    "cursor": false,
     "claude": false
   }
 }
-EOF
 
 # Now any new project will use this config
 cd ~/my-new-project
@@ -236,7 +249,7 @@ smart-skills init
   ],
   "install_targets": {
     "agents": true,
-    "cursor": true,
+    "cursor": false,
     "claude": false
   }
 }

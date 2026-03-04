@@ -130,13 +130,7 @@ pub fn list() -> Result<(), String> {
 }
 
 pub fn sync(remove_stale: bool) -> Result<(), String> {
-    if !is_initialized() {
-        println!(
-            "{}",
-            Colors::warning("No config found. Run 'smart-skills init' first.")
-        );
-        return Ok(());
-    }
+    ensure_initialized()?;
 
     println!("{}...", Colors::header("Syncing skills"));
 
