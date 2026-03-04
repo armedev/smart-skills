@@ -4,13 +4,19 @@ Agent skill management tool - manage and sync AI agent instructions for opencode
 
 ## Features
 
-- **Config-Based Skills**: Configure skill sources in JSON config
-- **Per-Project Skills**: Add custom skills in configured directories
-- **Global Config Support**: Use `~/.config/smart-skills/config.json` as template for new projects
-- **Skill Validation**: Validate skill structure and content
-- **Multi-Platform**: Installs skills for opencode, nvim, Cursor, and Claude Code
+- **Validates skills for agent support**: Ensures proper format so your agents understand skills
+- **Built with Rust**: Blazing fast - no waiting for npm
+- **Zero dependencies**: Standalone binary - no Node.js, no npm chain
+- **Open source**: Inspect every line yourself
+- **Your skills, your machine**: No marketplace, no third-party auto-sync
+- **Per-project + global config**: Team defaults via global, project overrides locally
+- **Simple sync**: `smart-skills sync` to update skills
 
 ## Installation
+
+### No npm/Node.js required!
+
+smart-skills is a standalone binary - no dependencies.
 
 ### Via Cargo (recommended)
 
@@ -37,6 +43,84 @@ curl -sL https://raw.githubusercontent.com/armedev/smart-skills/main/install.sh 
 cargo build --release
 cargo install --path .
 ```
+
+## Security
+
+**We validate FORMAT. You validate CONTENT.**
+
+### What we do:
+- Check skills have proper format (## headers, bullet points)
+- Verify SKILL.md is not empty
+- Parse frontmatter for agent compatibility
+
+### What YOU must do:
+- **Manually review every skill before adding**
+- **Use a raw text editor** - never trust rendered markdown
+- Check for hidden comments, escape sequences, malicious code
+
+### Why this matters:
+Your AI agent has permissions to:
+- Run shell commands
+- Access/modify files
+- Read environment variables (API keys!)
+
+A malicious skill = instant breach.
+
+**Never add a skill you haven't reviewed yourself.**
+
+## Manual Review Required
+
+**Don't trust rendered markdown. Use a real editor.**
+
+```bash
+# Find a skill you want
+git clone https://github.com/awesome/skills.git
+
+# REVIEW IT FIRST - use raw editor
+vim skills/my-skill/SKILL.md
+
+# Only if safe, copy to your source
+cp -r skills/my-skill ./my-skills/
+
+# Now add it
+smart-skills add my-skill
+```
+
+Renderers can hide:
+- HTML comments `<!-- malicious -->`
+- Escape sequences
+- Code that looks safe but isn't
+
+**Your agent runs this. Verify it yourself.**
+
+## Why not skills.sh?
+
+- npm supply chain attacks
+- Marketplace = trusting strangers
+- Their "add" command fetches from internet = security risk
+- We don't do automatic third-party
+
+## Quick Start
+
+```bash
+# Install (no npm needed!)
+cargo install smart-skills
+# or: brew install smart-skills
+
+# Initialize a project
+smart-skills init
+
+# Add skills
+smart-skills add planning
+
+# Sync to update
+smart-skills sync
+```
+
+**For teams:**
+1. Put skills in a shared location
+2. Run `init` with your team's skill source
+3. Team members run `sync` to get latest
 
 ---
 
@@ -65,33 +149,27 @@ The `init` command follows this logic:
 
 | Argument | Behavior |
 |----------|----------|
-| `--skills-source <path>` | Override source, use global config targets (or default to `agents`) |
-| `--targets a,c` | Use global config source, override targets |
-| Both provided | Use CLI values for both |
+| `--skills-source <path>` | Use this skill source directory |
+| `--targets a,c` | Use these targets |
+| Both provided | Use both specified values |
 
 #### Path Resolution
 
-When global config has relative paths (e.g., `"path": "skills"`), they are resolved relative to global config directory (`~/.config/smart-skills/`).
-
-CLI source paths are only resolved relative to current project directory (no fallback to global).
+Skill source paths are resolved relative to current project directory.
 
 </details>
 
 ### Quick Examples
 
 ```bash
-# Default initialization (uses global config if available)
+# Default initialization
 smart-skills init
 
 # Use custom skill source
 smart-skills init --skills-source ./my-skills
 
-# Use local skills/ directory
-smart-skills init --skills-source skills
-
 # Specify targets explicitly
 smart-skills init --targets agents,cursor
-smart-skills init --targets claude
 ```
 
 **Targets:**
@@ -136,7 +214,7 @@ smart-skills list
 smart-skills sync
 ```
 
-### Check status (with validation)
+### Check status
 
 > Requires: `smart-skills init` to have been run first
 
@@ -150,7 +228,7 @@ smart-skills status
 
 ```bash
 smart-skills config              # Show current config
-smart-skills set-sources ./my-skills /global/skills  # Set skill sources
+smart-skills set-sources ./my-skills  # Set skill sources
 ```
 
 ### Clear all skills
@@ -225,6 +303,7 @@ cat > ~/.config/smart-skills/config.json << 'EOF'
     "claude": false
   }
 }
+EOF
 
 # Now any new project will use this config
 cd ~/my-new-project
@@ -282,12 +361,22 @@ skills/
 └── ...
 ```
 
-### Validating Skills
+### SKILL.md Format
 
-Run `smart-skills status` to validate:
-- Empty skill files
-- Missing content
-- Proper formatting (## headers or bullet points)
+```markdown
+---
+name: planning
+description: Plan before coding
+---
+
+## Planning
+
+* Always understand the problem first
+* Break down into smaller tasks
+* Consider edge cases
+```
+
+The frontmatter is optional but helps agents understand skills better.
 
 ---
 
@@ -306,11 +395,9 @@ Run `smart-skills status` to validate:
    * For your team
    ```
 
-3. Initialize or sync:
+3. Add it:
    ```bash
-   smart-skills init
-   # or
-   smart-skills sync
+   smart-skills add my-custom-skill
    ```
 
 ---
