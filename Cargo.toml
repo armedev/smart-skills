@@ -1,6 +1,6 @@
 [package]
 name = "smart-skills"
-version = "0.1.4"
+version = "0.1.6"
 edition = "2021"
 description = "Agent skill management tool - manage and sync AI agent instructions"
 authors = ["Armedev <epiratesdev@gmail.com>"]
