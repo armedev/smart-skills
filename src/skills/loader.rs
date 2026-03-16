@@ -24,11 +24,16 @@ impl SkillLoader {
     pub fn load_available_skills() -> HashMap<String, Skill> {
         let mut skills = HashMap::new();
         let config = Self::load_config();
+        let config_path = config::global_config_path();
+        let config_dir = config_path
+            .parent()
+            .map(|p| p)
+            .unwrap_or_else(|| std::path::Path::new("."));
 
         for source in &config.skill_sources {
-            let path = std::path::PathBuf::from(&source.path);
-            if path.exists() {
-                Self::load_from_dir(path.as_path(), &mut skills);
+            let resolved = config::resolve_path_from(&source.path, config_dir);
+            if resolved.exists() {
+                Self::load_from_dir(resolved.as_path(), &mut skills);
             }
         }
         skills

@@ -78,6 +78,21 @@ Valid targets: `agents`, `cursor`, `claude`
 
 Global config: `~/.config/smart-skills/config.json`
 
+### Path Resolution
+
+Skill source paths in config are resolved relative to the config directory (`~/.config/smart-skills/`):
+
+```json
+{
+  "skill_sources": [
+    { "path": "./skills", "priority": 10 },
+    { "path": "../my-shared-skills", "priority": 5 }
+  ]
+}
+```
+
+This allows skills to live alongside your config rather than relative to pwd.
+
 ```json
 {
   "skill_sources": [{ "path": "~/my-skills", "priority": 10 }],
