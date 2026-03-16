@@ -27,6 +27,20 @@ smart-skills add code-review
 smart-skills sync
 ```
 
+## Examples
+
+See [`examples/`](examples/) for sample skills and config:
+
+```
+examples/
+├── config.json          # Example config
+└── skills/
+    ├── planning/
+    │   └── SKILL.md
+    └── code-review/
+        └── SKILL.md
+```
+
 ## Commands
 
 | Command | Description |
