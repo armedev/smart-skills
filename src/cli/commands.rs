@@ -12,7 +12,10 @@ fn ensure_initialized() -> Result<(), String> {
 }
 
 fn parse_targets(targets: Option<Vec<String>>) -> Result<Option<InstallTargets>, String> {
-    let targets = targets.ok_or_else(|| "Target cannot be empty".to_string())?;
+    let targets = match targets {
+        Some(t) => t,
+        None => return Ok(None),
+    };
 
     if targets.is_empty() {
         return Err("Target cannot be empty".to_string());
@@ -51,7 +54,41 @@ pub fn add(skills: Vec<String>, targets: Option<Vec<String>>) -> Result<(), Stri
         );
     }
 
+    let config = Config::load(&config::global_config_path());
+    let config_path = config::global_config_path();
+    let config_dir = config_path
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."));
     let available = SkillLoader::load_available_skills();
+
+    if available.is_empty() && !config.skill_sources.is_empty() {
+        let missing: Vec<_> = config
+            .skill_sources
+            .iter()
+            .filter(|s| !config::resolve_path_from(&s.path, config_dir).exists())
+            .collect();
+        if !missing.is_empty() {
+            println!("{}", Colors::warning("Warning: Skill source(s) not found:"));
+            for s in &missing {
+                println!("  {}", Colors::error(&s.path));
+            }
+            println!(
+                "{}",
+                Colors::dim("Add skills to this directory and try again")
+            );
+            return Ok(());
+        }
+    }
+
+    if available.is_empty() {
+        println!(
+            "{}",
+            Colors::warning("No skills found. Set skill source with:")
+        );
+        println!("  {}", Colors::skill("smart-skills set-sources <path>"));
+        return Ok(());
+    }
+
     let installed = SkillLoader::load_installed_skills();
 
     if skills.is_empty() {
@@ -138,7 +175,37 @@ pub fn remove(skills: Vec<String>, targets: Option<Vec<String>>) -> Result<(), S
 pub fn list() -> Result<(), String> {
     ensure_initialized()?;
 
+    let config = Config::load(&config::global_config_path());
+    let config_path = config::global_config_path();
+    let config_dir = config_path
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."));
     let available = SkillLoader::load_available_skills();
+
+    if available.is_empty() && !config.skill_sources.is_empty() {
+        let missing: Vec<_> = config
+            .skill_sources
+            .iter()
+            .filter(|s| !config::resolve_path_from(&s.path, config_dir).exists())
+            .collect();
+        if !missing.is_empty() {
+            println!("{}", Colors::warning("Warning: Skill source(s) not found:"));
+            for s in &missing {
+                println!("  {}", Colors::error(&s.path));
+            }
+            return Ok(());
+        }
+    }
+
+    if available.is_empty() {
+        println!(
+            "{}",
+            Colors::warning("No skills found. Set skill source with:")
+        );
+        println!("  {}", Colors::skill("smart-skills set-sources <path>"));
+        return Ok(());
+    }
+
     let installed = SkillLoader::load_installed_skills();
 
     println!(
@@ -273,12 +340,18 @@ pub fn status() -> Result<(), String> {
     if sources.is_empty() {
         println!("  {}", Colors::dim("No skill sources configured"));
     } else {
+        let config_path = config::global_config_path();
+        let config_dir = config_path
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."));
+
         for source in &sources {
-            let exists = std::path::Path::new(&source.path).exists();
+            let resolved = config::resolve_path_from(&source.path, config_dir);
+            let exists = resolved.exists();
             let status = if exists {
                 Colors::success("[ok]")
             } else {
-                Colors::error("[not found]")
+                Colors::error("[missing]")
             };
             println!(
                 "    - {} (priority: {}) {}",
@@ -329,20 +402,24 @@ pub fn config_cmd() -> Result<(), String> {
 
     let cfg = Config::load(&path);
     println!("  {}:", Colors::header("Skill sources"));
+
+    let config_dir = path.parent().unwrap_or_else(|| std::path::Path::new("."));
+
     for source in &cfg.skill_sources {
-        let p = std::path::Path::new(&source.path);
-        let exists = p.exists();
-        let count = p
-            .exists()
-            .then(|| fs::read_dir(p).ok())
-            .flatten()
-            .map(|entries| {
-                entries
-                    .filter_map(|e| e.ok())
-                    .filter(|e| e.path().is_dir())
-                    .count()
-            })
-            .unwrap_or(0);
+        let resolved = config::resolve_path_from(&source.path, config_dir);
+        let exists = resolved.exists();
+        let count = if exists {
+            std::fs::read_dir(&resolved)
+                .map(|entries| {
+                    entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| e.path().is_dir())
+                        .count()
+                })
+                .unwrap_or(0)
+        } else {
+            0
+        };
         let status = if exists {
             Colors::success("[ok]")
         } else {

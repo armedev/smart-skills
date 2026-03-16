@@ -26,12 +26,18 @@ impl SkillInstaller {
         dir: &std::path::Path,
         single_file: bool,
     ) -> Result<(), String> {
-        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+        let target_dir = if single_file {
+            dir.to_path_buf()
+        } else {
+            dir.join(&skill.name)
+        };
+
+        fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
 
         let path = if single_file {
             dir.join(format!("{}.md", skill.name))
         } else {
-            dir.join(&skill.name).join(SKILL_FILE)
+            target_dir.join(SKILL_FILE)
         };
 
         let content = if skill.content.starts_with("---") {

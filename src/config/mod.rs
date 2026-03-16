@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub const SKILL_FILE: &str = "SKILL.md";
 pub const DEFAULT_PRIORITY: u8 = 10;
@@ -82,6 +82,15 @@ pub fn resolve_path(path: &str) -> PathBuf {
         std::env::current_dir()
             .unwrap_or_else(|_| PathBuf::from("."))
             .join(p)
+    } else {
+        p
+    }
+}
+
+pub fn resolve_path_from(path: &str, base: &Path) -> PathBuf {
+    let p = PathBuf::from(path);
+    if p.is_relative() {
+        base.join(p)
     } else {
         p
     }
