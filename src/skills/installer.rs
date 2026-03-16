@@ -1,148 +1,115 @@
-use crate::config::{self, Config};
+use crate::config::{self, Config, InstallTargets, SKILL_FILE};
 use crate::skills::Skill;
 use std::fs;
 
-#[allow(dead_code)]
 pub struct SkillInstaller;
 
-#[allow(dead_code)]
 impl SkillInstaller {
-    pub fn install(skill: &Skill) -> Result<(), String> {
+    pub fn install(skill: &Skill, targets: Option<InstallTargets>) -> Result<(), String> {
         let cfg = Self::load_config();
+        let targets = targets.unwrap_or(cfg.install_targets);
 
-        if cfg.install_targets.agents {
-            Self::install_to_agents(skill)?;
+        if targets.agents {
+            Self::install_skill(skill, &config::agents_skills_dir(), false)?;
         }
-        if cfg.install_targets.cursor {
-            Self::install_to_cursor(skill)?;
+        if targets.cursor {
+            Self::install_skill(skill, &config::cursor_rules_dir(), true)?;
         }
-        if cfg.install_targets.claude {
-            Self::install_to_claude(skill)?;
+        if targets.claude {
+            Self::install_skill(skill, &config::claude_rules_dir(), true)?;
         }
         Ok(())
+    }
+
+    fn install_skill(
+        skill: &Skill,
+        dir: &std::path::Path,
+        single_file: bool,
+    ) -> Result<(), String> {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+
+        let path = if single_file {
+            dir.join(format!("{}.md", skill.name))
+        } else {
+            dir.join(&skill.name).join(SKILL_FILE)
+        };
+
+        let content = if skill.content.starts_with("---") {
+            skill.content.clone()
+        } else {
+            format!(
+                "---\nname: {}\ndescription: {}\n---\n\n{}",
+                skill.name, skill.description, skill.content
+            )
+        };
+
+        fs::write(path, content).map_err(|e| e.to_string())
     }
 
     fn load_config() -> Config {
-        let project_config = config::project_config_path();
-        if project_config.exists() {
-            return Config::load(&project_config);
+        let path = config::global_config_path();
+        if path.exists() {
+            Config::load(&path)
+        } else {
+            Config::default()
         }
-        Config::default()
     }
 
-    fn install_to_agents(skill: &Skill) -> Result<(), String> {
-        let target_dir = config::agents_skills_dir().join(&skill.name);
-        fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
-
-        let target_path = target_dir.join("SKILL.md");
-
-        let content = if Self::has_frontmatter(&skill.content) {
-            skill.content.clone()
-        } else {
-            format!(
-                "---\nname: {}\ndescription: {}\n---\n\n{}",
-                skill.name, skill.description, skill.content
-            )
-        };
-
-        fs::write(&target_path, content).map_err(|e| e.to_string())?;
-
-        Ok(())
-    }
-
-    fn install_to_cursor(skill: &Skill) -> Result<(), String> {
-        let target_dir = config::cursor_rules_dir();
-        fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
-
-        let target_path = target_dir.join(format!("{}.md", skill.name));
-
-        let content = if Self::has_frontmatter(&skill.content) {
-            skill.content.clone()
-        } else {
-            format!(
-                "---\nname: {}\ndescription: {}\n---\n\n{}",
-                skill.name, skill.description, skill.content
-            )
-        };
-
-        fs::write(&target_path, content).map_err(|e| e.to_string())?;
-
-        Ok(())
-    }
-
-    fn install_to_claude(skill: &Skill) -> Result<(), String> {
-        let target_dir = config::claude_rules_dir();
-        fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
-
-        let target_path = target_dir.join(format!("{}.md", skill.name));
-
-        let content = if Self::has_frontmatter(&skill.content) {
-            skill.content.clone()
-        } else {
-            format!(
-                "---\nname: {}\ndescription: {}\n---\n\n{}",
-                skill.name, skill.description, skill.content
-            )
-        };
-
-        fs::write(&target_path, content).map_err(|e| e.to_string())?;
-
-        Ok(())
-    }
-
-    fn has_frontmatter(content: &str) -> bool {
-        content.starts_with("---")
-    }
-
-    pub fn remove(skill_name: &str) -> Result<(), String> {
+    pub fn remove(name: &str, targets: Option<InstallTargets>) -> Result<(), String> {
         let cfg = Self::load_config();
+        let targets = targets.unwrap_or(cfg.install_targets);
 
-        if cfg.install_targets.agents {
-            Self::remove_from_agents(skill_name)?;
+        if targets.agents {
+            let dir = config::agents_skills_dir().join(name);
+            if dir.exists() {
+                fs::remove_dir_all(dir).map_err(|e| e.to_string())?;
+            }
         }
-        if cfg.install_targets.cursor {
-            Self::remove_from_cursor(skill_name)?;
+        if targets.cursor {
+            let path = config::cursor_rules_dir().join(format!("{}.md", name));
+            let _ = fs::remove_file(path);
         }
-        if cfg.install_targets.claude {
-            Self::remove_from_claude(skill_name)?;
+        if targets.claude {
+            let path = config::claude_rules_dir().join(format!("{}.md", name));
+            let _ = fs::remove_file(path);
         }
         Ok(())
     }
 
-    fn remove_from_agents(skill_name: &str) -> Result<(), String> {
-        let target_dir = config::agents_skills_dir().join(skill_name);
-        if target_dir.exists() {
-            fs::remove_dir_all(&target_dir).map_err(|e| e.to_string())?;
-        }
-        Ok(())
-    }
-
-    fn remove_from_cursor(skill_name: &str) -> Result<(), String> {
-        let target_path = config::cursor_rules_dir().join(format!("{}.md", skill_name));
-        if target_path.exists() {
-            fs::remove_file(&target_path).map_err(|e| e.to_string())?;
-        }
-        Ok(())
-    }
-
-    fn remove_from_claude(skill_name: &str) -> Result<(), String> {
-        let target_path = config::claude_rules_dir().join(format!("{}.md", skill_name));
-        if target_path.exists() {
-            fs::remove_file(&target_path).map_err(|e| e.to_string())?;
-        }
-        Ok(())
-    }
-
-    pub fn is_installed(skill_name: &str) -> bool {
+    #[allow(dead_code)]
+    pub fn is_installed(name: &str) -> bool {
         config::agents_skills_dir()
-            .join(skill_name)
-            .join("SKILL.md")
+            .join(name)
+            .join(SKILL_FILE)
             .exists()
     }
 
-    pub fn sync_all(skills: &[Skill]) -> Result<(), String> {
-        for skill in skills {
-            Self::install(skill)?;
+    #[allow(dead_code)]
+    pub fn remove_all_from_config() -> Result<(), String> {
+        let cfg = Self::load_config();
+        let targets = cfg.install_targets;
+
+        if targets.agents {
+            let dir = config::agents_skills_dir();
+            if dir.exists() {
+                fs::remove_dir_all(dir).map_err(|e| e.to_string())?;
+            }
+        }
+        if targets.cursor {
+            let dir = config::cursor_rules_dir();
+            if dir.exists() {
+                for e in fs::read_dir(dir).map_err(|e| e.to_string())?.flatten() {
+                    let _ = fs::remove_file(e.path());
+                }
+            }
+        }
+        if targets.claude {
+            let dir = config::claude_rules_dir();
+            if dir.exists() {
+                for e in fs::read_dir(dir).map_err(|e| e.to_string())?.flatten() {
+                    let _ = fs::remove_file(e.path());
+                }
+            }
         }
         Ok(())
     }
@@ -153,53 +120,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_has_frontmatter_true() {
-        let content = "---\ndescription: test\n---\n\n## Content";
-        assert!(SkillInstaller::has_frontmatter(content));
-    }
-
-    #[test]
-    fn test_has_frontmatter_false() {
-        let content = "## Content\n\n* Bullet point";
-        assert!(!SkillInstaller::has_frontmatter(content));
-    }
-
-    #[test]
-    fn test_has_frontmatter_empty() {
-        assert!(!SkillInstaller::has_frontmatter(""));
+    fn test_remove_nonexistent() {
+        assert!(SkillInstaller::remove("nonexistent", None).is_ok());
     }
 
     #[test]
     fn test_is_installed_not_installed() {
-        // Should return false when skill is not installed
-        assert!(!SkillInstaller::is_installed("nonexistent-skill"));
-    }
-
-    #[test]
-    fn test_remove_nonexistent_skill() {
-        // Should not fail when removing non-existent skill
-        let result = SkillInstaller::remove("nonexistent-skill");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_remove_from_agents_nonexistent() {
-        // Should not fail when removing from non-existent directory
-        let result = SkillInstaller::remove_from_agents("test-skill");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_remove_from_cursor_nonexistent() {
-        // Should not fail when removing from non-existent directory
-        let result = SkillInstaller::remove_from_cursor("test-skill");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_remove_from_claude_nonexistent() {
-        // Should not fail when removing from non-existent directory
-        let result = SkillInstaller::remove_from_claude("test-skill");
-        assert!(result.is_ok());
+        assert!(!SkillInstaller::is_installed("nonexistent"));
     }
 }

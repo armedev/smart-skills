@@ -15,47 +15,73 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    #[command(about = "Initialize project with skill sources and targets")]
+    #[command(about = "Set up global config")]
     Init {
         #[arg(long = "skills-source", default_value = "")]
         source: String,
         #[arg(long = "targets", value_delimiter = ',')]
         targets: Option<Vec<String>>,
+        #[arg(long = "force")]
+        force: bool,
     },
-    #[command(about = "Add skills to your project")]
-    Add { skills: Vec<String> },
+    #[command(about = "Add skills")]
+    Add {
+        skills: Vec<String>,
+        #[arg(long = "targets", value_delimiter = ',')]
+        targets: Option<Vec<String>>,
+    },
     #[command(about = "Remove installed skills")]
-    Remove { skills: Vec<String> },
+    Remove {
+        skills: Vec<String>,
+        #[arg(long = "targets", value_delimiter = ',')]
+        targets: Option<Vec<String>>,
+    },
     #[command(about = "List available and installed skills")]
     List,
     #[command(about = "Sync skills from sources to targets")]
     Sync {
         #[arg(long = "remove-stale")]
         remove_stale: bool,
+        #[arg(long = "targets", value_delimiter = ',')]
+        targets: Option<Vec<String>>,
     },
     #[command(about = "Show skill status and validation")]
     Status,
     #[command(about = "Remove all installed skills")]
-    Clear,
+    Clear {
+        #[arg(long = "targets", value_delimiter = ',')]
+        targets: Option<Vec<String>>,
+    },
     #[command(about = "Display current configuration")]
     Config,
     #[command(about = "Set skill source directories")]
-    SetSources { paths: Vec<String> },
+    SetSources {
+        paths: Vec<String>,
+        #[arg(long, short)]
+        overwrite: bool,
+    },
 }
 
 fn main() {
     let cli = Cli::parse();
 
     let result = match cli.command {
-        Commands::Init { source, targets } => cli::init(source, targets),
-        Commands::Add { skills } => cli::add(skills),
-        Commands::Remove { skills } => cli::remove(skills),
+        Commands::Init {
+            source,
+            targets,
+            force,
+        } => cli::init(source, targets, force),
+        Commands::Add { skills, targets } => cli::add(skills, targets),
+        Commands::Remove { skills, targets } => cli::remove(skills, targets),
         Commands::List => cli::list(),
-        Commands::Sync { remove_stale } => cli::sync(remove_stale),
+        Commands::Sync {
+            remove_stale,
+            targets,
+        } => cli::sync(remove_stale, targets),
         Commands::Status => cli::status(),
-        Commands::Clear => cli::clear(),
+        Commands::Clear { targets } => cli::clear(targets),
         Commands::Config => cli::config_cmd(),
-        Commands::SetSources { paths } => cli::set_sources(paths),
+        Commands::SetSources { paths, overwrite } => cli::set_sources(paths, overwrite),
     };
 
     if let Err(e) = result {
